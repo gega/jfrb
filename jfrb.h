@@ -21,6 +21,7 @@ void jfrb_init(struct jfrb_s *rb, uint8_t *buf, uint32_t buflen, jfrb_read_t rea
 uint8_t *jfrb_consume(struct jfrb_s *rb, uint32_t consumed);
 int jfrb_nx_size(struct jfrb_s *rb);
 void jfrb_prefill(struct jfrb_s *rb);
+uint8_t *jfrb_next_chunk(struct jfrb_s *rb, int *size);
 
 #ifdef JFRB_MACROS
 #define jfrb_refill(rb) do{ (rb)->read((rb)->ud, (rb)->buf, (rb)->len); (rb)->fill=(rb)->pos=0; (rb)->top=(rb)->len; }while(0)
@@ -54,10 +55,11 @@ void jfrb_init(struct jfrb_s *rb, uint8_t *buf, uint32_t buflen, jfrb_read_t rea
   the processing
   
  */
-uint8_t *jfrb_consume(struct jfrb_s *rb, uint32_t consumed)
+uint8_t *jfrb_consume_chunk(struct jfrb_s *rb, uint32_t consumed)
 {
   uint8_t *r;
 
+  if(consumed==0) return(NULL);
   r=&rb->buf[rb->pos];
   rb->pos+=consumed;
   return(r);
@@ -97,7 +99,7 @@ int jfrb_refill(struct jfrb_s *rb)
    ^buf    ^pos               ^buf+len
 
 */
-int jfrb_nx_size(struct jfrb_s *rb)
+int jfrb_prepare_chunk(struct jfrb_s *rb)
 {
   int size=rb->top-rb->pos;
   if(size==0)
@@ -116,6 +118,12 @@ int jfrb_nx_size(struct jfrb_s *rb)
     }
   }
   return(size);
+}
+
+
+uint8_t *jfrb_next_chunk(struct jfrb_s *rb, int *size)
+{
+  return(jfrb_consume_chunk(rb,(*size=jfrb_prepare_chunk(rb))));
 }
 
 /*

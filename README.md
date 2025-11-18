@@ -18,17 +18,17 @@ The buffer starts empty, with all internal state cleared.
 
 ---
 
-### `uint8_t *jfrb_consume(struct jfrb_s *rb, uint32_t consumed);`
+### `uint8_t *jfrb_consume_chunk(struct jfrb_s *rb, uint32_t consumed);`
 
 Returns a pointer to the next consecutive region of buffered data and advances the buffer position by `consumed` bytes.
 
-`consumed` must be greater than zero and must not exceed the value returned by `jfrb_nx_size()`.
+`consumed` must be greater than zero and must not exceed the value returned by `jfrb_prepare_chunk()`.
 
 The returned pointer is valid for exactly `consumed` bytes.
 
 ---
 
-### `int jfrb_nx_size(struct jfrb_s *rb);`
+### `int jfrb_prepare_chunk(struct jfrb_s *rb);`
 
 Returns the number of consecutive bytes currently available for consumption without wrapping.
 
@@ -56,33 +56,31 @@ Returns zero on success.
 
 ---
 
+### `int jfrb_next_chunk(struct jfrb_s *rb, int *have);`
+
+Compact combined API to return the pointer to the next consecutive region of buffered data
+and wrap around the buffer if necessary or refill if empty. The provided
+`have` pointer will contain the size of the available data.
+
+The returned pointer is points to exactly `have` bytes of buffered data.
+
+---
+
 # Typical Usage Pattern
 
 ```c
 jfrb_init(&rb, buf, bufsiz, custom_read, NULL);     // initialize state
 jfrb_refill(&rb);                                   // fill buffer before processing
 
-left=total_bytes;
-
-for(i=cnt=0;;i++,cnt++)
+int left=total_bytes;
+int have;
+uint8_t *p;
+while((p=jfrb_next_chunk(&rb, &have)) && left>0)      // compact api gives size and pointer
 {
-    int have = jfrb_nx_size(&rb);                   // available continuous bytes
-    if (have == 0)                                  // EOF signaled by read callback
-        break;
-
-    int want = <next-layer-request-size>;
-    int csm = MIN(want, have);
-    csm = MIN(csm, left);
-
-    uint8_t *p = jfrb_consume(&rb, csm);            // obtain data block
-    process_data(p, csm);                           // process the chunk
-    left -= csm;
-
-    if (left <= 0)                                  // EOF from total limit
-        break;
-
-    if ((cnt % nth_fill) == 0)
-        jfrb_prefill(&rb);                          // optional smoothing refill
+    int len=MIN(have, left);                          // if read cb cannot detect EOF it could be too large
+    process_chunk(p, len);                            // process the available data
+    left-=csm;
+    if( <time-budget-allows> ) jfrb_prefill(&rb);     // occasional prefill to reduce jitter (frame boundary)
 }
 ```
 

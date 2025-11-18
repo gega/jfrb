@@ -104,7 +104,7 @@ uint32_t run_test(const struct testcase *tc)
   struct jfrb_s rb;
   uint8_t *buf;
   uint32_t crc=0;
-  int cnt,i,left;
+  int cnt,left;
   uint8_t *d;
 
   rng_state=tc->seed;
@@ -116,16 +116,33 @@ uint32_t run_test(const struct testcase *tc)
   jfrb_init(&rb, buf, tc->bufsiz, fake_read, NULL);	// init
   jfrb_refill(&rb);					// full buffer refill
 
+  int have=0;
   left=tc->total_bytes;
-  for(i=cnt=0;;i++,cnt++)
+  uint8_t *p;
+#if 1
+  // Example of the compact combined API
+  while((p=jfrb_next_chunk(&rb, &have)) && left>0)	// compact api gives size and pointer
+  {
+    // process_data(p, MIN(have, left));
+    int csm=MIN(have, left);				// if read cb cannot detect EOF it could be too large
+    memcpy(d, p, csm);
+    d+=csm;
+    crc=crc32_update(crc, p, csm);
+    memset(p, 0, csm);
+    left-=csm;
+    if((cnt++%tc->nth_fill)==0) jfrb_prefill(&rb);	// occasional prefill to reduce jitter (frame boundary)
+  }
+#else
+  // Usage of the separated API for finer grain control
+  for(int i=cnt=0;;i++,cnt++)
   {
     if(tc->consume[i]<=0) i=0;
     int want=tc->consume[i];
-    int have=jfrb_nx_size(&rb);				// continuous data
+    have=jfrb_prepare_chunk(&rb);			// continuous data
     if(have==0) break; 					// EOF (detected by ringbuffer)
     int csm=MIN(want, have);
     csm=MIN(csm, left);
-    uint8_t *p=jfrb_consume(&rb, csm);			// get data, size must be <= jfrb_nx_size()
+    p=jfrb_consume_chunk(&rb, csm);			// get data, size must be <= jfrb_nx_size()
     memcpy(d,p,csm);
     d+=csm;
     crc=crc32_update(crc, p, csm);
@@ -134,6 +151,7 @@ uint32_t run_test(const struct testcase *tc)
     if(left<=0) break;					// EOF (detected by loop)
     if((cnt%tc->nth_fill) == 0) jfrb_prefill(&rb);	// occasional prefill to reduce jitter (frame boundary)
   }
+#endif
 
   free(buf);
 
