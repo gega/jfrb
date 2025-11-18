@@ -1,4 +1,6 @@
-# jfrb: Jitter-Reducing Ring Buffer
+# jfrb
+
+## Jitter-Reducing Ring Buffer
 
 Ring buffer utility designed for streaming processors that require predictable chunks of consecutive input data.
 
