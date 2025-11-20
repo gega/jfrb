@@ -91,6 +91,7 @@ while((p=jfrb_next_chunk(&rb, &have)) && left>0)      // compact api gives size 
     int len=MIN(have, left);                          // if read cb cannot detect EOF it could be too large
     process_chunk(p, len);                            // process the available data
     left-=csm;
+    jfrb_release_buffer(rb, len);                     // release the buffer after processing
     if( <time-budget-allows> ) jfrb_prefill(&rb);     // occasional prefill to reduce jitter (frame boundary)
 }
 ```
