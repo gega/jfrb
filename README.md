@@ -95,4 +95,4 @@ while((p=jfrb_next_chunk(&rb, &have)) && left>0)      // compact api gives size 
 }
 ```
 
-This loop continuously requests the largest safe block of consecutive data, processes it, and occasionally performs a prefill to keep future reads jitter free.
+This loop continuously requests the next block of consecutive data, processes it, and occasionally performs a prefill to keep future reads jitter free.
