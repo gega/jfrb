@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define JFRB_MACROS
 #define JFRB_IMPLEMENTATION
 #include "jfrb.h"
 
@@ -128,6 +129,7 @@ uint32_t run_test(const struct testcase *tc)
     memcpy(d, p, csm);
     d+=csm;
     crc=crc32_update(crc, p, csm);
+    jfrb_release_chunk(&rb, csm);                       // release the buffer for refilling
     memset(p, 0, csm);
     left-=csm;
     if((cnt++%tc->nth_fill)==0) jfrb_prefill(&rb);	// occasional prefill to reduce jitter (frame boundary)
@@ -146,6 +148,7 @@ uint32_t run_test(const struct testcase *tc)
     memcpy(d,p,csm);
     d+=csm;
     crc=crc32_update(crc, p, csm);
+    jfrb_release_chunk(&rb, csm);                       // release the buffer for refilling
     memset(p,0x55,csm);
     left-=csm;
     if(left<=0) break;					// EOF (detected by loop)

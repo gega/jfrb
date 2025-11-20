@@ -15,6 +15,7 @@ struct jfrb_s
   uint32_t pos;
   uint32_t top;
   uint32_t fill;
+  uint32_t use;
 };
 
 void jfrb_init(struct jfrb_s *rb, uint8_t *buf, uint32_t buflen, jfrb_read_t read, void *ud);
@@ -24,9 +25,14 @@ void jfrb_prefill(struct jfrb_s *rb);
 uint8_t *jfrb_next_chunk(struct jfrb_s *rb, int *size);
 
 #ifdef JFRB_MACROS
+
 #define jfrb_refill(rb) do{ (rb)->read((rb)->ud, (rb)->buf, (rb)->len); (rb)->fill=(rb)->pos=0; (rb)->top=(rb)->len; }while(0)
+
+#define jfrb_release_chunk(rb,s) do{ uint32_t _f=(s); if(_f>(rb)->use) _f=(rb)->use; (rb)->pos+=_f; (rb)->use-=_f; }while(0)
+
 #else
 int jfrb_refill(struct jfrb_s *rb);
+void jfrb_release_chunk(struct jfrb_s *rb, int size);
 #endif
 
 #endif
@@ -42,8 +48,19 @@ void jfrb_init(struct jfrb_s *rb, uint8_t *buf, uint32_t buflen, jfrb_read_t rea
   rb->len=buflen;
   rb->pos=0;
   rb->top=0;
+  rb->use=0;
 }
 
+#ifndef JFRB_MACROS
+void jfrb_release_chunk(struct jfrb_s *rb, int s)
+{
+  uint32_t f=s;
+  
+  if(f>rb->use) f=rb->use;
+  rb->pos+=f;
+  rb->use-=f;
+}
+#endif
 
 /*
   the processor will consume "consumed" bytes from the buffer
@@ -61,7 +78,7 @@ uint8_t *jfrb_consume_chunk(struct jfrb_s *rb, uint32_t consumed)
 
   if(consumed==0) return(NULL);
   r=&rb->buf[rb->pos];
-  rb->pos+=consumed;
+  rb->use=consumed;
   return(r);
 }
 

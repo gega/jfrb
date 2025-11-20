@@ -68,6 +68,15 @@ The returned pointer is points to exactly `have` bytes of buffered data.
 
 ---
 
+### `int jfrb_release_chunk(struct jfrb_s *rb, int size);`
+
+Release the obtained buffer received by `jfrb_next_chunk()` or `jfrb_consume_chunk()`
+after using the data of it. The given `size` should be less or equal than
+the buffer size received by the API calls. All data in the buffer should be
+released before requesting more.
+
+---
+
 # Typical Usage Pattern
 
 ```c
