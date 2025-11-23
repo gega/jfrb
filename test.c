@@ -129,8 +129,10 @@ uint32_t run_test(const struct testcase *tc)
     memcpy(d, p, csm);
     d+=csm;
     crc=crc32_update(crc, p, csm);
-    jfrb_release_chunk(&rb, csm);                       // release the buffer for refilling
     memset(p, 0, csm);
+    jfrb_release_chunk(&rb, csm/2);                     // release partial buffer for refilling
+    if((cnt++%tc->nth_fill)==1) jfrb_prefill(&rb);
+    jfrb_release_chunk(&rb, csm);                       // release the buffer for refilling
     left-=csm;
     if((cnt++%tc->nth_fill)==0) jfrb_prefill(&rb);	// occasional prefill to reduce jitter (frame boundary)
   }
