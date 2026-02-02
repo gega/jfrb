@@ -2,7 +2,7 @@
 
 ## Jitter-Reducing Ring Buffer
 
-Ring buffer utility designed for streaming processors that require predictable chunks of consecutive input data.
+Ring buffer utility designed for streaming processors that require predictable chunks of consecutive input data and can refill itself anytime not just when empty.
 
 ## API Reference
 
